@@ -29,11 +29,64 @@ export interface GpsState {
   last_poll_at: string | null
 }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+export interface WatchdogConfig {
+  mode: string
+  poll_interval_s: number
+  deny_debounce_s: number
+  recover_debounce_s: number
+  min_sats_for_good: number
+  boot_warmup_s: number
+  manual_override_until: string | null
+  last_poll_at: string | null
+}
+
+export class AuthError extends Error {}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(path, options)
+  if (res.status === 401) throw new AuthError("Unauthenticated")
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`${res.status}: ${text}`)
+  }
   return res.json() as Promise<T>
 }
 
-export const fetchLive = () => get<TelemetryReading>('/api/status/live')
-export const fetchGpsState = () => get<GpsState>('/api/gps/state')
+function post<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+export const login = (username: string, password: string) =>
+  post<{ username: string }>("/api/auth/login", { username, password })
+
+export const logout = () =>
+  post<{ ok: boolean }>("/api/auth/logout", {})
+
+export const fetchMe = () =>
+  request<{ username: string }>("/api/auth/me")
+
+// ── Read ──────────────────────────────────────────────────────────────────────
+
+export const fetchLive = () => request<TelemetryReading>("/api/status/live")
+export const fetchGpsState = () => request<GpsState>("/api/gps/state")
+export const fetchWatchdogConfig = () => request<WatchdogConfig>("/api/watchdog/config")
+
+// ── Control ───────────────────────────────────────────────────────────────────
+
+export const controlInhibitGps = (enabled: boolean) =>
+  post<GpsState>("/api/control/inhibit-gps", { enabled })
+
+export const controlReboot = () =>
+  post<{ ok: boolean; detail: string }>("/api/control/reboot", { confirm: true })
+
+export const controlStow = (stow: boolean) =>
+  post<{ ok: boolean; detail: string }>("/api/control/stow", { stow })
+
+export const updateWatchdogConfig = (updates: Partial<Pick<WatchdogConfig, "mode" | "deny_debounce_s" | "recover_debounce_s" | "min_sats_for_good">>) =>
+  post<WatchdogConfig>("/api/watchdog/config", updates)

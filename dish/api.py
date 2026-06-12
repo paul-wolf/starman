@@ -1,20 +1,53 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
+from django.contrib.auth import authenticate, login, logout
 from django.http import HttpRequest
+from django.utils import timezone as dj_tz
 from ninja import NinjaAPI, Query
 from ninja.errors import HttpError
+from ninja.security import django_auth
 
+from dish import grpc_client
 from dish.models import Event, TelemetryReading, WatchdogConfig
 from dish.schemas import (
     DishInfoOut,
     EventOut,
     GpsStateOut,
+    InhibitGpsIn,
+    LoginIn,
+    MeOut,
+    OkOut,
+    RebootIn,
+    StowIn,
     TelemetryReadingOut,
+    WatchdogConfigIn,
     WatchdogConfigOut,
 )
 
-api = NinjaAPI(title="Starlink Console API", version="1.0")
+api = NinjaAPI(title="Starlink Console API", version="1.0", auth=django_auth)
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+@api.post("/auth/login", auth=None, response=MeOut)
+def auth_login(request: HttpRequest, body: LoginIn):
+    user = authenticate(request, username=body.username, password=body.password)
+    if user is None:
+        raise HttpError(401, "Invalid credentials")
+    login(request, user)
+    return MeOut(username=user.username)
+
+
+@api.post("/auth/logout", response=OkOut)
+def auth_logout(request: HttpRequest):
+    logout(request)
+    return OkOut(ok=True)
+
+
+@api.get("/auth/me", response=MeOut)
+def auth_me(request: HttpRequest):
+    return MeOut(username=request.user.username)
 
 
 # ── Status ────────────────────────────────────────────────────────────────────
@@ -48,7 +81,6 @@ def status_history(
     if total <= limit:
         return list(qs)
 
-    # Simple stride-based downsample: pick evenly-spaced indices
     step = total / limit
     indices = {int(i * step) for i in range(limit)}
     return [row for i, row in enumerate(qs) if i in indices]
@@ -103,11 +135,98 @@ def dish_info(request: HttpRequest):
     )
 
 
-# ── Watchdog config ───────────────────────────────────────────────────────────
+# ── Watchdog config (read) ────────────────────────────────────────────────────
 
 @api.get("/watchdog/config", response=WatchdogConfigOut)
-def watchdog_config(request: HttpRequest):
+def watchdog_config_get(request: HttpRequest):
     cfg = WatchdogConfig.get_solo()
+    return _cfg_out(cfg)
+
+
+# ── Controls ──────────────────────────────────────────────────────────────────
+
+@api.post("/control/inhibit-gps", response=GpsStateOut)
+def control_inhibit_gps(request: HttpRequest, body: InhibitGpsIn):
+    ok = grpc_client.inhibit_gps(body.enabled)
+    if not ok:
+        raise HttpError(502, "gRPC call to dish failed")
+
+    grace = dj_tz.now() + timedelta(seconds=_grace_s())
+    WatchdogConfig.objects.filter(pk=1).update(manual_override_until=grace)
+
+    Event.objects.create(
+        event_type=Event.EventType.CONTROL_ACTION,
+        source=Event.Source.USER,
+        actor=request.user.username,
+        detail={"action": "inhibit_gps", "enabled": body.enabled, "hold_until": grace.isoformat()},
+    )
+
+    cfg = WatchdogConfig.get_solo()
+    reading = TelemetryReading.objects.order_by("-timestamp").first()
+    return GpsStateOut(
+        valid=reading.gps_valid if reading else False,
+        sats=reading.gps_sats if reading else 0,
+        inhibited=body.enabled,
+        watchdog_mode=cfg.mode,
+        manual_hold_until=cfg.manual_override_until,
+        last_poll_at=cfg.last_poll_at,
+    )
+
+
+@api.post("/control/reboot", response=OkOut)
+def control_reboot(request: HttpRequest, body: RebootIn):
+    if not body.confirm:
+        raise HttpError(400, "confirm must be true")
+    ok = grpc_client.reboot()
+    Event.objects.create(
+        event_type=Event.EventType.CONTROL_ACTION,
+        source=Event.Source.USER,
+        actor=request.user.username,
+        detail={"action": "reboot", "success": ok},
+    )
+    if not ok:
+        raise HttpError(502, "gRPC call to dish failed")
+    return OkOut(ok=True, detail="Reboot command sent")
+
+
+@api.post("/control/stow", response=OkOut)
+def control_stow(request: HttpRequest, body: StowIn):
+    ok = grpc_client.stow(body.stow)
+    Event.objects.create(
+        event_type=Event.EventType.CONTROL_ACTION,
+        source=Event.Source.USER,
+        actor=request.user.username,
+        detail={"action": "stow", "stow": body.stow, "success": ok},
+    )
+    if not ok:
+        raise HttpError(502, "gRPC call to dish failed")
+    return OkOut(ok=True, detail="Stow command sent" if body.stow else "Unstow command sent")
+
+
+@api.post("/watchdog/config", response=WatchdogConfigOut)
+def watchdog_config_update(request: HttpRequest, body: WatchdogConfigIn):
+    cfg = WatchdogConfig.get_solo()
+    prev_mode = cfg.mode
+
+    updates = {k: v for k, v in body.dict().items() if v is not None}
+    if updates:
+        WatchdogConfig.objects.filter(pk=cfg.pk).update(**updates)
+        cfg.refresh_from_db()
+
+    if body.mode and body.mode != prev_mode:
+        Event.objects.create(
+            event_type=Event.EventType.WATCHDOG_MODE_CHANGED,
+            source=Event.Source.USER,
+            actor=request.user.username,
+            detail={"from": prev_mode, "to": body.mode},
+        )
+
+    return _cfg_out(cfg)
+
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+def _cfg_out(cfg: WatchdogConfig) -> WatchdogConfigOut:
     return WatchdogConfigOut(
         mode=cfg.mode,
         poll_interval_s=cfg.poll_interval_s,
@@ -118,3 +237,8 @@ def watchdog_config(request: HttpRequest):
         manual_override_until=cfg.manual_override_until,
         last_poll_at=cfg.last_poll_at,
     )
+
+
+def _grace_s() -> int:
+    from django.conf import settings
+    return getattr(settings, "WATCHDOG_MANUAL_OVERRIDE_GRACE_S", 1800)

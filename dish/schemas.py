@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from ninja import Schema
 
@@ -60,3 +61,42 @@ class WatchdogConfigOut(Schema):
     boot_warmup_s: int
     manual_override_until: datetime | None
     last_poll_at: datetime | None
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+class LoginIn(Schema):
+    username: str
+    password: str
+
+
+class MeOut(Schema):
+    username: str
+
+
+# ── Control inputs ────────────────────────────────────────────────────────────
+
+class InhibitGpsIn(Schema):
+    enabled: bool
+
+
+class RebootIn(Schema):
+    confirm: bool
+
+
+class StowIn(Schema):
+    stow: bool
+
+
+class WatchdogConfigIn(Schema):
+    mode: Optional[str] = None
+    deny_debounce_s: Optional[int] = None
+    recover_debounce_s: Optional[int] = None
+    min_sats_for_good: Optional[int] = None
+
+
+# ── Generic responses ─────────────────────────────────────────────────────────
+
+class OkOut(Schema):
+    ok: bool
+    detail: str = ""
