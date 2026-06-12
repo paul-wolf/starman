@@ -1,0 +1,20 @@
+[Unit]
+Description=Starman GPS Watchdog
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/starman
+EnvironmentFile=/home/pi/starman/.env
+ExecStart=/home/pi/starman/.venv/bin/python manage.py run_watchdog
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=starman-watchdog
+
+[Install]
+WantedBy=multi-user.target

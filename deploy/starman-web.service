@@ -1,0 +1,24 @@
+[Unit]
+Description=Starman Web Console (gunicorn)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/starman
+EnvironmentFile=/home/pi/starman/.env
+ExecStart=/home/pi/starman/.venv/bin/gunicorn console.wsgi \
+    --workers 2 \
+    --bind 127.0.0.1:8000 \
+    --access-logfile - \
+    --error-logfile -
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=starman-web
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Starman telemetry retention (one-shot)
+After=network.target
+
+[Service]
+Type=oneshot
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/starman
+EnvironmentFile=/home/pi/starman/.env
+ExecStart=/home/pi/starman/.venv/bin/python manage.py retain_telemetry
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=starman-retain
