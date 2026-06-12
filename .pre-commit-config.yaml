@@ -1,0 +1,48 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: ['--ignore=E501']
+
+  - repo: local
+    hooks:
+      - id: django-test
+        name: Run Django tests
+        entry: bash -c '.venv/bin/python manage.py test --keepdb'
+        language: system
+        pass_filenames: false
+        files: \.py$
+
+      - id: django-makemigrations
+        name: Check for missing Django migrations
+        entry: bash -c 'output=$(.venv/bin/python manage.py makemigrations --check --dry-run 2>&1); status=$?; if [ $status -ne 0 ]; then echo "Missing migrations detected. Run manage.py makemigrations to create them:"; echo "$output"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        files: \.py$
+
+      - id: no-forbidden-imports
+        name: Prevent forbidden imports
+        entry: python check_forbidden_imports.py
+        language: system
+        types: [python]
+
+      - id: no-breakpoints
+        name: Check for breakpoint() calls
+        entry: python check_no_breakpoints.py
+        language: system
+        types: [python]
+
+      - id: no-pytest
+        name: Prevent pytest usage (use Django test framework)
+        entry: bash -c 'if grep -En "import pytest|from pytest|@pytest\." "$@" | grep -v "^Binary"; then echo "Use Django test framework (unittest.TestCase), not pytest."; exit 1; fi' --
+        language: system
+        types: [python]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
