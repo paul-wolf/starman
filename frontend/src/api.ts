@@ -40,6 +40,15 @@ export interface WatchdogConfig {
   last_poll_at: string | null
 }
 
+export interface ApiEvent {
+  id: number
+  timestamp: string
+  event_type: string
+  source: string
+  actor: string | null
+  detail: Record<string, unknown>
+}
+
 export class AuthError extends Error {}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -77,6 +86,12 @@ export const fetchLive = () => request<TelemetryReading>("/api/status/live")
 export const fetchGpsState = () => request<GpsState>("/api/gps/state")
 export const fetchWatchdogConfig = () => request<WatchdogConfig>("/api/watchdog/config")
 
+export const fetchHistory = (sinceIso: string) =>
+  request<TelemetryReading[]>(`/api/status/history?since=${encodeURIComponent(sinceIso)}&limit=500`)
+
+export const fetchEvents = (limit = 50) =>
+  request<ApiEvent[]>(`/api/events?limit=${limit}`)
+
 // ── Control ───────────────────────────────────────────────────────────────────
 
 export const controlInhibitGps = (enabled: boolean) =>
@@ -88,5 +103,6 @@ export const controlReboot = () =>
 export const controlStow = (stow: boolean) =>
   post<{ ok: boolean; detail: string }>("/api/control/stow", { stow })
 
-export const updateWatchdogConfig = (updates: Partial<Pick<WatchdogConfig, "mode" | "deny_debounce_s" | "recover_debounce_s" | "min_sats_for_good">>) =>
-  post<WatchdogConfig>("/api/watchdog/config", updates)
+export const updateWatchdogConfig = (
+  updates: Partial<Pick<WatchdogConfig, "mode" | "poll_interval_s" | "deny_debounce_s" | "recover_debounce_s" | "min_sats_for_good">>
+) => post<WatchdogConfig>("/api/watchdog/config", updates)

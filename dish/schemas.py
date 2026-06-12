@@ -90,6 +90,7 @@ class StowIn(Schema):
 
 class WatchdogConfigIn(Schema):
     mode: Optional[str] = None
+    poll_interval_s: Optional[int] = None
     deny_debounce_s: Optional[int] = None
     recover_debounce_s: Optional[int] = None
     min_sats_for_good: Optional[int] = None

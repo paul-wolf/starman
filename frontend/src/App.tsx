@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
 import { AuthError, fetchGpsState, fetchLive, fetchMe, fetchWatchdogConfig, logout } from "./api"
 import type { GpsState, TelemetryReading, WatchdogConfig } from "./api"
+import Charts from "./Charts"
 import Controls from "./Controls"
+import EventTimeline from "./EventTimeline"
 import Login from "./Login"
 import "./App.css"
 
@@ -142,6 +144,12 @@ export default function App() {
         <Tile label="Disablement" value={live?.disablement_code || "None"} />
         <Tile label="Outage" value={live?.outage_cause || "None"} />
       </div>
+
+      <section className="section-title">Charts</section>
+      <Charts />
+
+      <section className="section-title">Event Timeline</section>
+      <EventTimeline />
 
       <section className="section-title">Controls</section>
       <Controls
