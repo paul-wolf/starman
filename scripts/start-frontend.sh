@@ -48,4 +48,5 @@ echo "  ────────────────────────
 echo ""
 
 cd frontend
-exec BACKEND_PORT="$BACKEND_PORT" npx vite --port "$PORT" --strictPort
+export BACKEND_PORT
+exec npx vite --port "$PORT" --strictPort
