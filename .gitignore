@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Django
+db.sqlite3
+db.sqlite3-wal
+db.sqlite3-shm
+staticfiles/
+*.log
+
+# Environment
+.env
+
+# Dev coordination
+.dev-ports
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# macOS
+.DS_Store
