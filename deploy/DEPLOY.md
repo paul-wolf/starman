@@ -26,30 +26,19 @@ This produces `frontend/dist/` which `install.sh` will sync to the Pi and `colle
 
 ## 2. Deploy to the Pi
 
-Run the install script **on the Pi** as root. The easiest way is to clone the repo directly on the Pi:
+`frontend/dist/` is gitignored, so **do not clone on the Pi** — the built frontend won't be there. The only supported path is rsync from your dev machine after building.
 
 ```bash
-# On the Pi
-git clone https://github.com/paul-wolf/starman.git
-cd starman
-sudo DEPLOY_USER=pi INSTALL_DIR=/home/pi/starman bash deploy/install.sh
-```
-
-Or, if you prefer to push from your dev machine:
-
-```bash
-# On your dev machine
+# On your dev machine (after step 1)
 rsync -avz --exclude='.git' --exclude='.venv' --exclude='frontend/node_modules' \
     ./ pi@<pi-ip>:/home/pi/starman/
 ssh pi@<pi-ip> "cd /home/pi/starman && sudo bash deploy/install.sh"
 ```
 
-### Environment variables
-
-`install.sh` defaults to `DEPLOY_USER=pi` and `INSTALL_DIR=/home/pi/starman`. Override both if your setup differs:
+`install.sh` defaults to `DEPLOY_USER=pi` and `INSTALL_DIR=/home/pi/starman`. Override if needed:
 
 ```bash
-sudo DEPLOY_USER=myuser INSTALL_DIR=/opt/starman bash deploy/install.sh
+ssh pi@<pi-ip> "cd /home/pi/starman && sudo DEPLOY_USER=myuser INSTALL_DIR=/opt/starman bash deploy/install.sh"
 ```
 
 ---
@@ -237,17 +226,25 @@ manage.py retain_telemetry --raw-days 14 --minute-days 60 --hour-days 730
 
 ## Updating
 
+Because `frontend/dist/` is gitignored, updates always go via rsync from your dev machine:
+
 ```bash
-# On the Pi
-cd /home/pi/starman
-git pull
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python manage.py migrate --noinput
-.venv/bin/python manage.py collectstatic --noinput
-systemctl restart starman-web starman-watchdog
+# On your dev machine
+cd frontend && npm run build && cd ..
+rsync -avz --exclude='.git' --exclude='.venv' --exclude='frontend/node_modules' \
+    ./ pi@<pi-ip>:/home/pi/starman/
+
+# Then on the Pi
+ssh pi@<pi-ip> "
+  cd /home/pi/starman
+  .venv/bin/pip install -r requirements.txt
+  .venv/bin/python manage.py migrate --noinput
+  .venv/bin/python manage.py collectstatic --noinput
+  sudo systemctl restart starman-web starman-watchdog
+"
 ```
 
-If the frontend changed, rebuild it on your dev machine first and sync `frontend/dist/` to the Pi before running `collectstatic`.
+If only Python code changed (no frontend, no new dependencies, no migrations), you can skip the build and rsync just the Python files.
 
 ---
 

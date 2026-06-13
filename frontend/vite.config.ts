@@ -5,6 +5,7 @@ const backendPort = process.env.BACKEND_PORT ?? '8700'
 
 export default defineConfig({
   plugins: [react()],
+  base: '/static/',
   server: {
     proxy: {
       '/api': {
