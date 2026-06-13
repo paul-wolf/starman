@@ -1,7 +1,10 @@
+import os
+import shutil
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from django.contrib.auth import authenticate, login, logout
+from django.db.models import Count, Max, Min
 from django.http import HttpRequest
 from django.utils import timezone as dj_tz
 from ninja import NinjaAPI, Query
@@ -20,6 +23,7 @@ from dish.schemas import (
     OkOut,
     RebootIn,
     StowIn,
+    SystemStatsOut,
     TelemetryReadingOut,
     WatchdogConfigIn,
     WatchdogConfigOut,
@@ -222,6 +226,35 @@ def watchdog_config_update(request: HttpRequest, body: WatchdogConfigIn):
         )
 
     return _cfg_out(cfg)
+
+
+# ── System stats ──────────────────────────────────────────────────────────────
+
+@api.get("/system/stats", response=SystemStatsOut)
+def system_stats(request: HttpRequest):
+    from django.conf import settings
+    db_path = str(settings.DATABASES["default"]["NAME"])
+    db_size_mb = round(os.path.getsize(db_path) / (1024 ** 2), 2) if os.path.exists(db_path) else 0.0
+    disk = shutil.disk_usage(db_path)
+
+    agg = TelemetryReading.objects.aggregate(
+        count=Count("id"),
+        oldest=Min("timestamp"),
+        newest=Max("timestamp"),
+    )
+    cfg = WatchdogConfig.get_solo()
+
+    return SystemStatsOut(
+        db_size_mb=db_size_mb,
+        telemetry_count=agg["count"] or 0,
+        telemetry_oldest=agg["oldest"],
+        telemetry_newest=agg["newest"],
+        event_count=Event.objects.count(),
+        disk_used_gb=round((disk.total - disk.free) / (1024 ** 3), 2),
+        disk_free_gb=round(disk.free / (1024 ** 3), 2),
+        disk_total_gb=round(disk.total / (1024 ** 3), 2),
+        last_retain_at=cfg.last_retain_at,
+    )
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

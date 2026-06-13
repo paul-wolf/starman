@@ -21,6 +21,7 @@ class TelemetryReading(models.Model):
     disablement_code = models.CharField(max_length=64, default="")
     outage_cause = models.CharField(max_length=64, null=True)
     mobility_class = models.CharField(max_length=64, default="")
+    is_snr_above_noise_floor = models.BooleanField(null=True)
     connectivity_ok = models.BooleanField(null=True)
     raw_json = models.JSONField(default=dict)
 
@@ -79,6 +80,7 @@ class WatchdogConfig(models.Model):
     probe_hosts = models.TextField(default="8.8.8.8,1.1.1.1")
     manual_override_until = models.DateTimeField(null=True, blank=True)
     last_poll_at = models.DateTimeField(null=True, blank=True)
+    last_retain_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

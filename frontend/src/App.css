@@ -56,6 +56,100 @@ body {
 }
 .btn-logout:hover { color: #e2e8f0; border-color: #475569; }
 
+.btn-system {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  background: none;
+  border: 1px solid #2d3748;
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+.btn-system:hover { color: #e2e8f0; border-color: #475569; }
+
+/* ── System stats modal ──────────────────────────────────────────────────── */
+
+.ss-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.ss-card {
+  background: #1a1f2e;
+  border: 1px solid #2d3748;
+  border-radius: 10px;
+  width: 360px;
+  max-width: calc(100vw - 2rem);
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.ss-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.ss-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.ss-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+}
+.ss-close:hover { color: #e2e8f0; }
+
+.ss-section {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #475569;
+  margin: 1rem 0 0.4rem;
+}
+
+.ss-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+}
+
+.ss-label { color: #94a3b8; }
+.ss-value { color: #e2e8f0; font-variant-numeric: tabular-nums; }
+.ss-warn  { color: #f59e0b; }
+
+.ss-disk-bar {
+  height: 4px;
+  background: #2d3748;
+  border-radius: 2px;
+  margin-top: 0.4rem;
+  overflow: hidden;
+}
+
+.ss-disk-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.ss-loading { color: #64748b; font-size: 0.85rem; padding: 0.5rem 0; }
+.ss-error   { color: #ef4444; font-size: 0.85rem; padding: 0.5rem 0; }
+
 /* ── Section titles ──────────────────────────────────────────────────────── */
 
 .section-title {

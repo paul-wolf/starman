@@ -15,6 +15,8 @@ from django.db import connection
 from django.utils import timezone
 from datetime import timedelta
 
+from dish.models import WatchdogConfig
+
 
 class Command(BaseCommand):
     help = "Downsample and prune old TelemetryReading rows"
@@ -48,6 +50,8 @@ class Command(BaseCommand):
                 f"Total removed: {total}"
             )
         )
+        if not dry:
+            WatchdogConfig.objects.filter(pk=1).update(last_retain_at=now)
 
     def _prune_oldest(self, cur, hour_cutoff, dry):
         """Delete all rows older than hour_cutoff (beyond the 1/hr tier)."""

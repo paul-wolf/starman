@@ -24,6 +24,7 @@ class TelemetryReadingOut(Schema):
     disablement_code: str
     outage_cause: str | None
     mobility_class: str
+    is_snr_above_noise_floor: bool | None
     connectivity_ok: bool | None
 
 
@@ -97,6 +98,20 @@ class WatchdogConfigIn(Schema):
     recover_debounce_s: Optional[int] = None
     min_sats_for_good: Optional[int] = None
     probe_hosts: Optional[str] = None
+
+
+# ── System ────────────────────────────────────────────────────────────────────
+
+class SystemStatsOut(Schema):
+    db_size_mb: float
+    telemetry_count: int
+    telemetry_oldest: datetime | None
+    telemetry_newest: datetime | None
+    event_count: int
+    disk_used_gb: float
+    disk_free_gb: float
+    disk_total_gb: float
+    last_retain_at: datetime | None
 
 
 # ── Generic responses ─────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import Charts from "./Charts"
 import Controls from "./Controls"
 import EventTimeline from "./EventTimeline"
 import Login from "./Login"
+import SystemStatsModal from "./SystemStats"
 import "./App.css"
 
 const POLL_MS = 2500
@@ -51,6 +52,7 @@ export default function App() {
   const [config, setConfig] = useState<WatchdogConfig | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [showSystem, setShowSystem] = useState(false)
 
   // Check session on mount
   useEffect(() => {
@@ -109,9 +111,12 @@ export default function App() {
               {error && <span className="stale"> — connection lost</span>}
             </span>
           )}
+          <button className="btn-system" onClick={() => setShowSystem(true)}>System</button>
           <button className="btn-logout" onClick={handleLogout}>{username} · Sign out</button>
         </span>
       </header>
+
+      {showSystem && <SystemStatsModal onClose={() => setShowSystem(false)} />}
 
       <section className="section-title">GPS</section>
       <div className="tile-grid">

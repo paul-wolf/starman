@@ -25,6 +25,7 @@ class StatusDict(TypedDict, total=False):
     gps_sats: int
     gps_inhibited: bool
     pnt_filter_state: str
+    is_snr_above_noise_floor: bool
     pop_ping_latency_ms: float | None
     pop_ping_drop_rate: float
     downlink_bps: float | None
@@ -156,30 +157,36 @@ def get_status() -> StatusDict | None:
         raw_cause = _g(outage, "cause")
         outage_cause = str(raw_cause) if raw_cause else None
 
+    # MessageToDict decodes protobuf enum integers to their string names.
+    # Use it as the source of truth for all enum-typed string fields.
     try:
         from google.protobuf import json_format
         raw = json_format.MessageToDict(s, preserving_proto_field_name=True)
     except Exception:
         raw = {}
 
+    raw_gps = raw.get("gps_stats", {})
+    raw_align = raw.get("alignment_stats", {})
+
     return StatusDict(
         gps_valid=bool(_g(gps, "gps_valid", default=False)),
         gps_sats=int(_g(gps, "gps_sats", default=0)),
         gps_inhibited=bool(_g(gps, "inhibit_gps", default=False)),
-        pnt_filter_state=str(_g(gps, "pnt_filter_convergence_state", default="")),
+        pnt_filter_state=raw_gps.get("pnt_filter_convergence_state", ""),
+        is_snr_above_noise_floor=bool(_g(s, "is_snr_above_noise_floor", default=False)),
         pop_ping_latency_ms=latency,
         pop_ping_drop_rate=float(_g(s, "pop_ping_drop_rate", default=0)),
         downlink_bps=_g(s, "downlink_throughput_bps"),
         uplink_bps=_g(s, "uplink_throughput_bps"),
         fraction_obstructed=_g(obs, "fraction_obstructed"),
         attitude_uncertainty_deg=_g(align, "attitude_uncertainty_deg"),
-        attitude_state=str(_g(align, "attitude_estimation_state", default="")),
+        attitude_state=raw_align.get("attitude_estimation_state", ""),
         uptime_s=int(_g(device_state, "uptime_s", default=0)),
         software_version=str(_g(device_info, "software_version", default="")),
         country_code=str(_g(device_info, "country_code", default="")),
-        disablement_code=str(_g(s, "disablement_code", default="")),
+        disablement_code=raw.get("disablement_code", ""),
         outage_cause=outage_cause,
-        mobility_class=str(_g(s, "mobility_class", default="")),
+        mobility_class=raw.get("mobility_class", ""),
         raw=raw,
     )
 

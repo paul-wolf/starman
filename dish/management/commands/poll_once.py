@@ -23,3 +23,12 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("\n--- Raw payload (top-level keys) ---"))
         self.stdout.write(json.dumps(list(raw.keys()), indent=2))
+
+        for key in ("gps_stats", "alerts", "obstruction_stats", "ready_states"):
+            if key in raw:
+                self.stdout.write(self.style.SUCCESS(f"\n--- {key} ---"))
+                self.stdout.write(json.dumps(raw[key], indent=2, default=str))
+
+        for key in ("is_snr_above_noise_floor", "boresight_azimuth_deg", "boresight_elevation_deg"):
+            if key in raw:
+                self.stdout.write(f"\n{key}: {raw[key]}")

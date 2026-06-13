@@ -120,6 +120,7 @@ def _write_telemetry(status: dict, connectivity_ok: bool | None = None) -> None:
         disablement_code=status["disablement_code"],
         outage_cause=status["outage_cause"],
         mobility_class=status["mobility_class"],
+        is_snr_above_noise_floor=status.get("is_snr_above_noise_floor"),
         connectivity_ok=connectivity_ok,
         raw_json=status.get("raw", {}),
     )

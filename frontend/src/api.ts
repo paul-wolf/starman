@@ -18,6 +18,7 @@ export interface TelemetryReading {
   disablement_code: string
   outage_cause: string | null
   mobility_class: string
+  is_snr_above_noise_floor: boolean | null
   connectivity_ok: boolean | null
 }
 
@@ -49,6 +50,18 @@ export interface ApiEvent {
   source: string
   actor: string | null
   detail: Record<string, unknown>
+}
+
+export interface SystemStats {
+  db_size_mb: number
+  telemetry_count: number
+  telemetry_oldest: string | null
+  telemetry_newest: string | null
+  event_count: number
+  disk_used_gb: number
+  disk_free_gb: number
+  disk_total_gb: number
+  last_retain_at: string | null
 }
 
 export class AuthError extends Error {}
@@ -84,6 +97,7 @@ export const fetchMe = () =>
 
 // ── Read ──────────────────────────────────────────────────────────────────────
 
+export const fetchSystemStats = () => request<SystemStats>("/api/system/stats")
 export const fetchLive = () => request<TelemetryReading>("/api/status/live")
 export const fetchGpsState = () => request<GpsState>("/api/gps/state")
 export const fetchWatchdogConfig = () => request<WatchdogConfig>("/api/watchdog/config")
