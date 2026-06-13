@@ -76,10 +76,17 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+function getCsrf(): string {
+  return document.cookie
+    .split("; ")
+    .find(c => c.startsWith("csrftoken="))
+    ?.split("=")[1] ?? ""
+}
+
 function post<T>(path: string, body: unknown): Promise<T> {
   return request<T>(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
     body: JSON.stringify(body),
   })
 }

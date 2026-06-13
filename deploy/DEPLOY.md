@@ -106,6 +106,70 @@ The web console will be available at `http://<pi-ip>:8000`.
 
 ---
 
+## Watchdog-only install
+
+If you only need the GPS watchdog (no web UI), use `install_watchdog.sh`. This is the script the Starvic agent runs when you click **Queue Starman install** from the Nodes page.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paul-wolf/starman/main/deploy/install_watchdog.sh | sudo bash
+```
+
+Or clone first and run locally:
+
+```bash
+git clone --depth=1 https://github.com/paul-wolf/starman.git /tmp/starman
+sudo bash /tmp/starman/deploy/install_watchdog.sh
+```
+
+### Options
+
+| Flag | Default | Description |
+|---|---|---|
+| `--repo <url>` | `https://github.com/paul-wolf/starman` | Git repo to clone |
+| `--dir <path>` | `/opt/starman` | Install directory |
+| `--user <name>` | `$SUDO_USER` or `root` | OS user to own files and run the service |
+
+Example with overrides:
+
+```bash
+sudo bash install_watchdog.sh --dir /srv/starman --user myuser
+```
+
+### What it does
+
+1. Clones (or `git pull`s) the repo to `--dir`
+2. Creates a Python venv and installs `requirements.txt`
+3. Creates `/var/lib/starman/` and writes the SQLite DB there
+4. Generates a `.env` with a random `SECRET_KEY` and sane defaults (only if `.env` doesn't exist):
+   ```
+   SECRET_KEY=<generated>
+   DEBUG=False
+   ALLOWED_HOSTS=127.0.0.1,localhost
+   DB_PATH=/var/lib/starman/db.sqlite3
+   DISH_GRPC_TARGET=192.168.100.1:9200
+   WATCHDOG_MANUAL_OVERRIDE_GRACE_S=1800
+   ```
+5. Runs `manage.py migrate`
+6. Installs, enables, and starts `starman-watchdog.service`
+
+After install, the watchdog runs in `LOG_ONLY` mode — see [Watchdog modes](#watchdog-modes).
+
+```bash
+systemctl status starman-watchdog
+journalctl -u starman-watchdog -f
+```
+
+### Remote install via Starvic
+
+If the Pi is already running the Starvic agent, you can trigger the watchdog install remotely from the Starvic web UI:
+
+1. Open **Nodes** in the Starvic UI.
+2. Find the Pi and click **Queue Starman install** (staff only).
+3. On the next agent poll the Pi downloads `install_watchdog.sh` from GitHub and runs it as root.
+4. Watch progress in the agent logs: `journalctl -u starvic-agent -f` on the Pi.
+
+---
+
 ## Dish routing
 
 The Pi must have a route to `192.168.100.1` (the Starlink dish's local IP). Verify with:
