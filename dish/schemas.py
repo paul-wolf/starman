@@ -24,6 +24,7 @@ class TelemetryReadingOut(Schema):
     disablement_code: str
     outage_cause: str | None
     mobility_class: str
+    connectivity_ok: bool | None
 
 
 class EventOut(Schema):
@@ -59,6 +60,7 @@ class WatchdogConfigOut(Schema):
     recover_debounce_s: int
     min_sats_for_good: int
     boot_warmup_s: int
+    probe_hosts: str
     manual_override_until: datetime | None
     last_poll_at: datetime | None
 
@@ -94,6 +96,7 @@ class WatchdogConfigIn(Schema):
     deny_debounce_s: Optional[int] = None
     recover_debounce_s: Optional[int] = None
     min_sats_for_good: Optional[int] = None
+    probe_hosts: Optional[str] = None
 
 
 # ── Generic responses ─────────────────────────────────────────────────────────

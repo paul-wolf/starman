@@ -21,6 +21,7 @@ class TelemetryReading(models.Model):
     disablement_code = models.CharField(max_length=64, default="")
     outage_cause = models.CharField(max_length=64, null=True)
     mobility_class = models.CharField(max_length=64, default="")
+    connectivity_ok = models.BooleanField(null=True)
     raw_json = models.JSONField(default=dict)
 
     class Meta:
@@ -38,6 +39,8 @@ class Event(models.Model):
         INHIBIT_CLEARED = "INHIBIT_CLEARED"
         OUTAGE_START = "OUTAGE_START"
         OUTAGE_END = "OUTAGE_END"
+        NET_OUTAGE_START = "NET_OUTAGE_START"
+        NET_OUTAGE_END = "NET_OUTAGE_END"
         REBOOT_DETECTED = "REBOOT_DETECTED"
         DISH_UNREACHABLE = "DISH_UNREACHABLE"
         CONTROL_ACTION = "CONTROL_ACTION"
@@ -73,6 +76,7 @@ class WatchdogConfig(models.Model):
     recover_debounce_s = models.IntegerField(default=120)
     min_sats_for_good = models.IntegerField(default=5)
     boot_warmup_s = models.IntegerField(default=300)
+    probe_hosts = models.TextField(default="8.8.8.8,1.1.1.1")
     manual_override_until = models.DateTimeField(null=True, blank=True)
     last_poll_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)

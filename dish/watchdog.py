@@ -28,6 +28,8 @@ class WatchdogState:
     last_gps_good: bool | None = None   # None = unknown (startup or post-gap)
     last_outage_cause: str | None = None
     dish_unreachable: bool = False
+    net_outage_active: bool = False
+    logical_inhibited: bool = False   # tracks "as if enforced" inhibit in LOG_ONLY/MONITOR
 
 
 @dataclass
@@ -56,9 +58,20 @@ def evaluate(
     status: dict | None,     # StatusDict from grpc_client, or None if unreachable
     config: ConfigSnapshot,
     state: WatchdogState,
+    *,
+    connectivity_ok: bool | None = None,
 ) -> WatchdogDecision:
     events: list[EventSpec] = []
     s = replace(state)  # shallow copy; we mutate s below
+
+    # ── Network connectivity (independent of dish reachability) ────────────
+    if connectivity_ok is not None:
+        if not connectivity_ok and not state.net_outage_active:
+            events.append(EventSpec("NET_OUTAGE_START", {}))
+            s.net_outage_active = True
+        elif connectivity_ok and state.net_outage_active:
+            events.append(EventSpec("NET_OUTAGE_END", {}))
+            s.net_outage_active = False
 
     # ── Dish unreachable ────────────────────────────────────────────────────
     if status is None:
@@ -82,6 +95,7 @@ def evaluate(
         s.gps_denied_since = None
         s.gps_good_since = None
         s.last_gps_good = None
+        s.logical_inhibited = False   # fresh boot clears any simulated inhibit
 
     s.last_uptime_s = uptime
 
@@ -113,6 +127,12 @@ def evaluate(
 
     s.last_gps_good = gps_good
 
+    # Effective inhibit: actual dish state OR our logical tracking.
+    # In ENFORCE mode these converge after one poll; in LOG_ONLY/MONITOR mode
+    # logical_inhibited is the only record that we already "handled" this event,
+    # preventing repeated INHIBIT_SET and enabling INHIBIT_CLEARED simulation.
+    effective_inhibited = status["gps_inhibited"] or state.logical_inhibited
+
     recommended: bool | None = None
 
     if gps_good:
@@ -125,10 +145,11 @@ def evaluate(
         # The hold blocks auto-CLEAR (user chose to inhibit; don't fight them).
         if (
             good_s >= config.recover_debounce_s
-            and status["gps_inhibited"]
+            and effective_inhibited
             and not _override_active(config, now)
         ):
             recommended = False
+            s.logical_inhibited = False
 
     else:
         s.gps_good_since = None
@@ -138,8 +159,9 @@ def evaluate(
 
         # Recommend inhibit after deny debounce.
         # Safety beats the manual hold: we still inhibit on genuine sustained denial.
-        if denied_s >= config.deny_debounce_s and not status["gps_inhibited"]:
+        if denied_s >= config.deny_debounce_s and not effective_inhibited:
             recommended = True
+            s.logical_inhibited = True
 
     return WatchdogDecision(recommended_inhibit=recommended, events=events, new_state=s)
 

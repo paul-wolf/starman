@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from dish import grpc_client
+from dish.connectivity import check_connectivity
 from dish.models import Event, TelemetryReading, WatchdogConfig
 from dish.watchdog import ConfigSnapshot, WatchdogState, evaluate
 
@@ -41,15 +42,16 @@ class Command(BaseCommand):
             cfg = WatchdogConfig.get_solo()
             now = timezone.now()
 
+            connectivity_ok = check_connectivity(cfg.probe_hosts)
             status = grpc_client.get_status()
 
-            decision = evaluate(now, status, _snapshot(cfg), state)
+            decision = evaluate(now, status, _snapshot(cfg), state, connectivity_ok=connectivity_ok)
             state = decision.new_state
 
             # ── Persist telemetry (only when reachable) ──────────────────
             if status is not None:
                 consecutive_failures = 0
-                _write_telemetry(status)
+                _write_telemetry(status, connectivity_ok=connectivity_ok)
             else:
                 consecutive_failures += 1
 
@@ -99,7 +101,7 @@ def _snapshot(cfg: WatchdogConfig) -> ConfigSnapshot:
     )
 
 
-def _write_telemetry(status: dict) -> None:
+def _write_telemetry(status: dict, connectivity_ok: bool | None = None) -> None:
     TelemetryReading.objects.create(
         gps_valid=status["gps_valid"],
         gps_sats=status["gps_sats"],
@@ -118,6 +120,7 @@ def _write_telemetry(status: dict) -> None:
         disablement_code=status["disablement_code"],
         outage_cause=status["outage_cause"],
         mobility_class=status["mobility_class"],
+        connectivity_ok=connectivity_ok,
         raw_json=status.get("raw", {}),
     )
 

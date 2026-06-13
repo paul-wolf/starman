@@ -277,6 +277,22 @@ body {
 }
 .ctrl-threshold-grid input[type="number"]:focus { border-color: #3b82f6; }
 
+.ctrl-threshold-wide {
+  grid-column: 1 / -1;
+}
+.ctrl-threshold-grid input[type="text"] {
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  background: #0f1117;
+  border: 1px solid #2d3748;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  width: 100%;
+  outline: none;
+  font-family: monospace;
+}
+.ctrl-threshold-grid input[type="text"]:focus { border-color: #3b82f6; }
+
 /* ── Login ───────────────────────────────────────────────────────────────── */
 
 .login-wrap {

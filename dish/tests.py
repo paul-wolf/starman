@@ -158,6 +158,24 @@ class InhibitRecommendationTests(TestCase):
         d = evaluate(t(0), good_status(uptime_s=1000, gps_inhibited=False), cfg(recover_debounce_s=120), state)
         self.assertIsNone(d.recommended_inhibit)
 
+    def test_no_repeated_inhibit_recommendation(self):
+        # Second poll: logical_inhibited=True after first recommendation, so no repeat.
+        state = WatchdogState(gps_denied_since=t(-100), last_gps_good=False, last_uptime_s=1000, logical_inhibited=True)
+        d = evaluate(t(0), denied_status(uptime_s=1000, gps_inhibited=False), cfg(deny_debounce_s=90), state)
+        self.assertIsNone(d.recommended_inhibit)
+
+    def test_clear_fires_via_logical_inhibited(self):
+        # GPS good, dish not physically inhibited but logically was — clear should fire.
+        state = WatchdogState(gps_good_since=t(-130), last_gps_good=True, last_uptime_s=1000, logical_inhibited=True)
+        d = evaluate(t(0), good_status(uptime_s=1000, gps_inhibited=False), cfg(recover_debounce_s=120), state)
+        self.assertFalse(d.recommended_inhibit)
+        self.assertFalse(d.new_state.logical_inhibited)
+
+    def test_logical_inhibited_reset_on_reboot(self):
+        state = WatchdogState(last_uptime_s=5000, logical_inhibited=True, last_gps_good=True)
+        d = evaluate(t(0), good_status(uptime_s=30), cfg(), state)
+        self.assertFalse(d.new_state.logical_inhibited)
+
 
 class ManualOverrideTests(TestCase):
     def test_blocks_clear(self):
@@ -206,3 +224,41 @@ class OutageTrackingTests(TestCase):
         state = WatchdogState(last_uptime_s=1000, last_outage_cause="NO_SATS", last_gps_good=True)
         d = evaluate(t(0), good_status(uptime_s=1010, outage_cause="NO_SATS"), cfg(), state)
         self.assertNotIn("OUTAGE_START", event_types(d))
+
+
+class ConnectivityTrackingTests(TestCase):
+    def test_net_outage_starts_on_first_failure(self):
+        s = WatchdogState(last_uptime_s=1000, last_gps_good=True)
+        d = evaluate(t(400), good_status(), cfg(), s, connectivity_ok=False)
+        self.assertIn("NET_OUTAGE_START", event_types(d))
+        self.assertTrue(d.new_state.net_outage_active)
+
+    def test_no_duplicate_net_outage_start(self):
+        s = WatchdogState(last_uptime_s=1000, last_gps_good=True, net_outage_active=True)
+        d = evaluate(t(400), good_status(), cfg(), s, connectivity_ok=False)
+        self.assertNotIn("NET_OUTAGE_START", event_types(d))
+
+    def test_net_outage_ends_on_recovery(self):
+        s = WatchdogState(last_uptime_s=1000, last_gps_good=True, net_outage_active=True)
+        d = evaluate(t(400), good_status(), cfg(), s, connectivity_ok=True)
+        self.assertIn("NET_OUTAGE_END", event_types(d))
+        self.assertFalse(d.new_state.net_outage_active)
+
+    def test_none_connectivity_emits_no_events(self):
+        s = WatchdogState(last_uptime_s=1000, last_gps_good=True)
+        d = evaluate(t(400), good_status(), cfg(), s, connectivity_ok=None)
+        self.assertNotIn("NET_OUTAGE_START", event_types(d))
+        self.assertNotIn("NET_OUTAGE_END", event_types(d))
+
+    def test_net_outage_tracked_when_dish_unreachable(self):
+        # Connectivity is tracked independently; both events can fire in same poll.
+        s = WatchdogState()
+        d = evaluate(t(400), None, cfg(), s, connectivity_ok=False)
+        self.assertIn("NET_OUTAGE_START", event_types(d))
+        self.assertIn("DISH_UNREACHABLE", event_types(d))
+
+    def test_net_outage_state_preserved_through_dish_unreachable(self):
+        s = WatchdogState(net_outage_active=True)
+        d = evaluate(t(400), None, cfg(), s, connectivity_ok=False)
+        self.assertTrue(d.new_state.net_outage_active)
+        self.assertNotIn("NET_OUTAGE_START", event_types(d))

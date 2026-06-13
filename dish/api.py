@@ -234,6 +234,7 @@ def _cfg_out(cfg: WatchdogConfig) -> WatchdogConfigOut:
         recover_debounce_s=cfg.recover_debounce_s,
         min_sats_for_good=cfg.min_sats_for_good,
         boot_warmup_s=cfg.boot_warmup_s,
+        probe_hosts=cfg.probe_hosts,
         manual_override_until=cfg.manual_override_until,
         last_poll_at=cfg.last_poll_at,
     )

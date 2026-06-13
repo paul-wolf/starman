@@ -18,6 +18,7 @@ export interface TelemetryReading {
   disablement_code: string
   outage_cause: string | null
   mobility_class: string
+  connectivity_ok: boolean | null
 }
 
 export interface GpsState {
@@ -36,6 +37,7 @@ export interface WatchdogConfig {
   recover_debounce_s: number
   min_sats_for_good: number
   boot_warmup_s: number
+  probe_hosts: string
   manual_override_until: string | null
   last_poll_at: string | null
 }
@@ -104,5 +106,5 @@ export const controlStow = (stow: boolean) =>
   post<{ ok: boolean; detail: string }>("/api/control/stow", { stow })
 
 export const updateWatchdogConfig = (
-  updates: Partial<Pick<WatchdogConfig, "mode" | "poll_interval_s" | "deny_debounce_s" | "recover_debounce_s" | "min_sats_for_good">>
+  updates: Partial<Pick<WatchdogConfig, "mode" | "poll_interval_s" | "deny_debounce_s" | "recover_debounce_s" | "min_sats_for_good" | "probe_hosts">>
 ) => post<WatchdogConfig>("/api/watchdog/config", updates)

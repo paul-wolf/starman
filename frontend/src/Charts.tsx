@@ -40,6 +40,7 @@ function toData(readings: TelemetryReading[]): ChartDatum[] {
     latency: r.pop_ping_latency_ms,
     drop: +(r.pop_ping_drop_rate * 100).toFixed(3),
     obstruction: r.fraction_obstructed != null ? +(r.fraction_obstructed * 100).toFixed(3) : null,
+    connectivity: r.connectivity_ok != null ? (r.connectivity_ok ? 1 : 0) : null,
   }))
 }
 
@@ -51,9 +52,11 @@ interface MiniChartProps {
   color: string
   hours: number
   domain?: [number | "auto", number | "auto"]
+  lineType?: "monotone" | "stepAfter"
+  tickFormatter?: (v: number) => string
 }
 
-function MiniChart({ data, dataKey, label, unit, color, hours, domain }: MiniChartProps) {
+function MiniChart({ data, dataKey, label, unit, color, hours, domain, lineType = "monotone", tickFormatter }: MiniChartProps) {
   return (
     <div className="chart-card">
       <div className="chart-title">{label}</div>
@@ -75,15 +78,15 @@ function MiniChart({ data, dataKey, label, unit, color, hours, domain }: MiniCha
               tick={{ fontSize: 10, fill: "#64748b" }}
               tickLine={false}
               width={36}
-              tickFormatter={v => `${v}${unit}`}
+              tickFormatter={tickFormatter ?? (v => `${v}${unit}`)}
             />
             <Tooltip
               contentStyle={{ background: "#1e2330", border: "1px solid #2d3748", fontSize: 12 }}
               labelFormatter={ts => new Date(ts as string).toLocaleString()}
-              formatter={(v: number) => [`${v}${unit}`, label]}
+              formatter={(v: number) => [tickFormatter ? tickFormatter(v) : `${v}${unit}`, label]}
             />
             <Line
-              type="monotone"
+              type={lineType}
               dataKey={dataKey}
               stroke={color}
               dot={false}
@@ -131,10 +134,21 @@ export default function Charts() {
       </div>
 
       <div className="chart-grid">
-        <MiniChart data={data} dataKey="sats"        label="GPS Satellites" unit=""   color="#22d3ee" hours={windowHours} domain={[0, "auto"]} />
-        <MiniChart data={data} dataKey="latency"     label="Latency"        unit=" ms" color="#a78bfa" hours={windowHours} domain={[0, "auto"]} />
-        <MiniChart data={data} dataKey="drop"        label="Drop Rate"      unit="%"  color="#f87171" hours={windowHours} domain={[0, "auto"]} />
-        <MiniChart data={data} dataKey="obstruction" label="Obstruction"    unit="%"  color="#fb923c" hours={windowHours} domain={[0, "auto"]} />
+        <MiniChart data={data} dataKey="sats"         label="GPS Satellites" unit=""    color="#22d3ee" hours={windowHours} domain={[0, "auto"]} />
+        <MiniChart data={data} dataKey="latency"      label="Latency"        unit=" ms" color="#a78bfa" hours={windowHours} domain={[0, "auto"]} />
+        <MiniChart data={data} dataKey="drop"         label="Drop Rate"      unit="%"   color="#f87171" hours={windowHours} domain={[0, "auto"]} />
+        <MiniChart data={data} dataKey="obstruction"  label="Obstruction"    unit="%"   color="#fb923c" hours={windowHours} domain={[0, "auto"]} />
+        <MiniChart
+          data={data}
+          dataKey="connectivity"
+          label="Connectivity"
+          unit=""
+          color="#4ade80"
+          hours={windowHours}
+          domain={[-0.1, 1.1]}
+          lineType="stepAfter"
+          tickFormatter={v => v === 1 ? "Up" : v === 0 ? "Down" : ""}
+        />
       </div>
     </div>
   )

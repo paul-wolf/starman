@@ -19,6 +19,7 @@ export default function Controls({ gps, config, onGpsChange, onConfigChange }: P
   const [denyDebounce, setDenyDebounce] = useState(config?.deny_debounce_s ?? 90)
   const [recoverDebounce, setRecoverDebounce] = useState(config?.recover_debounce_s ?? 120)
   const [minSats, setMinSats] = useState(config?.min_sats_for_good ?? 5)
+  const [probeHosts, setProbeHosts] = useState(config?.probe_hosts ?? "8.8.8.8,1.1.1.1")
   const [cfgSaved, setCfgSaved] = useState(false)
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function Controls({ gps, config, onGpsChange, onConfigChange }: P
     setDenyDebounce(config.deny_debounce_s)
     setRecoverDebounce(config.recover_debounce_s)
     setMinSats(config.min_sats_for_good)
+    setProbeHosts(config.probe_hosts)
   }, [config])
 
   async function act(key: string, fn: () => Promise<unknown>) {
@@ -74,6 +76,7 @@ export default function Controls({ gps, config, onGpsChange, onConfigChange }: P
         deny_debounce_s: denyDebounce,
         recover_debounce_s: recoverDebounce,
         min_sats_for_good: minSats,
+        probe_hosts: probeHosts,
       })
       onConfigChange(updated)
       setCfgSaved(true)
@@ -166,6 +169,12 @@ export default function Controls({ gps, config, onGpsChange, onConfigChange }: P
             Min sats for good
             <input type="number" min={1} max={30} value={minSats}
               onChange={e => setMinSats(+e.target.value)} />
+          </label>
+          <label className="ctrl-threshold-wide">
+            Probe hosts (host[:port], comma-separated)
+            <input type="text" value={probeHosts}
+              onChange={e => setProbeHosts(e.target.value)}
+              placeholder="8.8.8.8,1.1.1.1" />
           </label>
         </div>
         <div className="ctrl-row">
