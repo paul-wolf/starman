@@ -75,7 +75,7 @@ def _connect() -> tuple[Any, Any]:
                     pass
             _channel = grpc.insecure_channel(_target())
             ref = yagrc_reflector.GrpcReflectionClient()
-            ref.load_protocols(_channel, symbols=["SpaceX.API.Device.Device"])
+            ref.load_protocols(_channel, symbols=["SpaceX.API.Device.Device"], timeout=REQUEST_TIMEOUT)
             _stub = ref.service_stub_class("SpaceX.API.Device.Device")(_channel)
             _request_class = ref.message_class("SpaceX.API.Device.Request")
 

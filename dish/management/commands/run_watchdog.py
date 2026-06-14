@@ -6,6 +6,7 @@ Run as: python manage.py run_watchdog
 
 import logging
 import signal
+import sys
 import time
 
 from django.core.management.base import BaseCommand
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 # Back-off applied when the dish is unreachable: poll_interval * this factor
 UNREACHABLE_BACKOFF = 3
+# Exit after this many consecutive failures so systemd can restart fresh
+MAX_CONSECUTIVE_FAILURES = 10
 
 
 class Command(BaseCommand):
@@ -71,6 +74,14 @@ class Command(BaseCommand):
 
             # ── Update heartbeat ──────────────────────────────────────────
             WatchdogConfig.objects.filter(pk=cfg.pk).update(last_poll_at=now)
+
+            # ── Exit if stuck so systemd can restart fresh ────────────────
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                logger.error(
+                    "Dish unreachable for %d consecutive polls — exiting for systemd restart",
+                    consecutive_failures,
+                )
+                sys.exit(1)
 
             # ── Sleep ──────────────────────────────────────────────────────
             interval = cfg.poll_interval_s

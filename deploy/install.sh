@@ -28,7 +28,11 @@ echo "Installing Python dependencies..."
 sudo -u "$DEPLOY_USER" python3 -m venv "$INSTALL_DIR/.venv"
 sudo -u "$DEPLOY_USER" "$INSTALL_DIR/.venv/bin/pip" install --quiet -r "$INSTALL_DIR/requirements.txt"
 
-# ── 3. Env file ───────────────────────────────────────────────────────────────
+# ── 3. DB directory ───────────────────────────────────────────────────────────
+mkdir -p /var/lib/starman
+chown "$DEPLOY_USER:$DEPLOY_USER" /var/lib/starman
+
+# ── 4. Env file ──────────────────────────────────────────────────────────────
 if [ ! -f "$INSTALL_DIR/.env" ]; then
     echo "Creating .env from .env.example — edit it before starting services."
     cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
@@ -36,14 +40,14 @@ if [ ! -f "$INSTALL_DIR/.env" ]; then
     chmod 600 "$INSTALL_DIR/.env"
 fi
 
-# ── 4. Django setup ───────────────────────────────────────────────────────────
+# ── 5. Django setup ───────────────────────────────────────────────────────────
 echo "Running migrations..."
 sudo -u "$DEPLOY_USER" "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/manage.py" migrate --noinput
 
 echo "Collecting static files..."
 sudo -u "$DEPLOY_USER" "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/manage.py" collectstatic --noinput
 
-# ── 5. Systemd units ──────────────────────────────────────────────────────────
+# ── 6. Systemd units ──────────────────────────────────────────────────────────
 echo "Installing systemd units..."
 
 for unit in starman-web.service starman-watchdog.service starman-retain.service starman-retain.timer; do

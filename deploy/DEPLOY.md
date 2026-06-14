@@ -30,7 +30,7 @@ This produces `frontend/dist/` which `install.sh` will sync to the Pi and `colle
 
 ```bash
 # On your dev machine (after step 1)
-rsync -avz --exclude='.git' --exclude='.venv' --exclude='frontend/node_modules' \
+rsync -avz --exclude='.git' --exclude='.venv' --exclude='frontend/node_modules' --exclude='db.sqlite3' \
     ./ pi@<pi-ip>:/home/pi/starman/
 ssh pi@<pi-ip> "cd /home/pi/starman && sudo bash deploy/install.sh"
 ```
@@ -231,7 +231,7 @@ Because `frontend/dist/` is gitignored, updates always go via rsync from your de
 ```bash
 # On your dev machine
 cd frontend && npm run build && cd ..
-rsync -avz --exclude='.git' --exclude='.venv' --exclude='frontend/node_modules' \
+rsync -avz --exclude='.git' --exclude='.venv' --exclude='frontend/node_modules' --exclude='db.sqlite3' \
     ./ pi@<pi-ip>:/home/pi/starman/
 
 # Then on the Pi
