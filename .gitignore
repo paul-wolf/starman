@@ -25,3 +25,6 @@ frontend/dist/
 
 # macOS
 .DS_Store
+
+labpi-deploy.sh
+*~
